@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Task Manager</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; }
+    h1 { text-align: center; }
+    .task { display: flex; justify-content: space-between; padding: 5px; border-bottom: 1px solid #ddd; }
+    .done { text-decoration: line-through; color: gray; }
+    button { margin-left: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Task Manager</h1>
+
+  <div>
+    <input id="newTaskTitle" type="text" placeholder="Enter task title">
+    <button onclick="addTask()">Add Task</button>
+  </div>
+
+  <h3>Tasks:</h3>
+  <div id="taskList"></div>
+
+  <h3>Admin Panel:</h3>
+  <button onclick="getStats()">Get Stats</button>
+  <button onclick="resetTasks()">Reset All Tasks</button>
+  <div id="stats"></div>
+
+  <script>
+    const API_BASE = "http://localhost:8888";
+
+    async function fetchTasks() {
+      const res = await fetch(API_BASE + "/user/tasks");
+      const data = await res.json();
+      const list = document.getElementById("taskList");
+      list.innerHTML = "";
+      data.tasks.forEach(task => {
+        const div = document.createElement("div");
+        div.className = "task";
+        div.innerHTML = `
+          <span class="${task.done ? "done" : ""}">${task.title}</span>
+          <div>
+            <button onclick="completeTask(${task.id})">✔</button>
+            <button onclick="deleteTask(${task.id})">❌</button>
+          </div>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    async function addTask() {
+      const title = document.getElementById("newTaskTitle").value;
+      if (!title) return alert("Enter a title!");
+      await fetch(API_BASE + "/user/task", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "title=" + encodeURIComponent(title)
+      });
+      document.getElementById("newTaskTitle").value = "";
+      fetchTasks();
+    }
+
+    async function completeTask(id) {
+      await fetch(API_BASE + "/user/task/" + id, { method: "PUT" });
+      fetchTasks();
+    }
+
+    async function deleteTask(id) {
+      await fetch(API_BASE + "/user/task/" + id, { method: "DELETE" });
+      fetchTasks();
+    }
+
+    async function resetTasks() {
+      await fetch(API_BASE + "/admin/reset", { method: "POST" });
+      fetchTasks();
+    }
+
+    async function getStats() {
+      const res = await fetch(API_BASE + "/admin/stats");
+      const data = await res.json();
+      document.getElementById("stats").innerText =
+        "Number of tasks: " + data.number_of_tasks;
+    }
+
+    // Загружаем список при открытии страницы
+    fetchTasks();
+  </script>
+</body>
+</html>
